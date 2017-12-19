@@ -1,0 +1,7 @@
+
+char ssid[] = "";     //  your network SSID (name)
+char pass[] = "";  // your network password
+char mqttUser[] = "";
+char mqttPass[] = "";
+char mqttID[] = "";
+char otaPass[] = "";
