@@ -16,6 +16,6 @@ There are three files in this sketch.  The first is this readme.  Cayenne_Xmas_T
 
 ## Info
 
-The tree is activated by the PIR motion sensor when the room is occupied.  After a vairiable interval (in minutes) of inactivity, the lights are turned off.  The interval can be set with a slider input within the Cayenne project on channel 4 and the tree can be maually activated by a Cayenne button on channel 7.
+The tree is activated by the PIR motion sensor when the room is occupied.  After a variable interval (in minutes) of inactivity, the lights are turned off.  The interval can be set with a slider input within the Cayenne project on channel 4 and the tree can be maually activated by a Cayenne button on channel 7.
 
 The sensors on the RoomSense also deliver temperature, humidity and barometric pressure.

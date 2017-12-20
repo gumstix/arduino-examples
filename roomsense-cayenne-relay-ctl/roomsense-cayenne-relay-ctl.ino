@@ -1,6 +1,6 @@
 /*  
  *   This is an example sketch for the Gumstix RoomSense ATSAMW25 USB dongle.
- *   It activates a power relay into wich a Christmas Tree is plugged.
+ *   It activates a power relay into which a Christmas Tree is plugged.
  *   The tree's lights turn on when the room is occupied and deactivates
  *   after a variable interval (in minutes) of inactivity elapses.
  *   
