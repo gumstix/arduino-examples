@@ -1,5 +1,6 @@
-#define ROOMSENSE
+//#define ROOMSENSE
 //#define STRATA
+#define AEROCORE
 #include <Wire.h>
 #include "boards.h"
 
@@ -39,10 +40,12 @@ void setup() {
     digitalWrite(gpio_pins[i], LOW);
   }
   Wire.begin();
+#ifndef AEROCORE  
 #ifdef PIN_SERIAL1_RX
   Serial1.begin(9600);
   Serial.println("Serial1 enabled");
 #endif //PIN_SERIAL1_RX
+#endif
 }
 
 void loop() {
@@ -86,9 +89,11 @@ void loop() {
 }
 
 void establishContact() {
-  while (Serial.available() < 0) {
+  while (Serial.available() <= 0) {
     Serial.print('A');   // send a capital A
-    delay(300);
+    delay(200);                       // wait for a second
+    digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
+    delay(200);
   }
 }
 
@@ -237,7 +242,11 @@ void uart_mode()
         mode = GPIO;
     }
   }
+#ifndef AEROCORE
+#ifdef PIN_SERIAL1_RX
   Serial1.println("Hello World from Serial1!");
+#endif
+#endif
 }
 
 void batch_mode()
