@@ -1,8 +1,55 @@
-//#define ROOMSENSE
-//#define STRATA
-#define AEROCORE
+/*  Copyright (c)2018 Gumstix, Inc.
+ * 
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 or
+ *  (at your option) any later version as published by the Free Software
+ *  Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  aerocore-test.ino:
+ *  ------------------
+ *  This sketch allows you to access the pin functions of the ADC, PWM, 
+ *  GPIO and serial headers available on the AeroCore 2 MAV boards.
+ * 
+ *  First, connect to the UART2 header with an FTDI cable and and run the
+ *  Arduino IDE's serial monitor. Click send if no text appears.
+ * 
+ *  You will start in GPIO mode. You can always return to GPIO mode and the main 
+ *  menu by hitting the ';' key.
+ *  From GPIO mode you can enter the following:
+ *
+ *  '0' - 'z'     Toggle GPIO of the given number (0 - 35)
+ *  '/'           Switch to 'Toggle All' mode -> any key toggles all GPIO pins
+ *  ','           Switch to PWM mode          -> Enter PWM pin index
+ *                                            -> Enter pulse width in increments of 10%
+ *  '.'           Switch to ADC mode          -> Press a key to see all analog pin values
+ *  ';'           Switch to I2C mode          -> Press a key to send data over Wire
+ *  '''           Switch to UART mode         -> Press a key to send data over all UARTs
+ *  '\'           Switch to SPI mode          -> Press a key to send data over SPI
+ */
+
 #include <Wire.h>
 #include "boards.h"
+#include <HardwareSerial.h>
+#include <SPI.h> 
+
+
+// TODO:  Autoselect debug console based on which one recieves input on setup().
+
+#define HAVE_HWSERIAL7
+#define HAVE_HWSERIAL3
+#define HAVE_HWSERIAL2
+#define HAVE_HWSERIAL1
+
+SPIClass spi(PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_SS);
+SPISettings spi_cfg;
+int gpio_pins[] = {PB9, PB8, PC9, PB0, PE5, PE6, PC6, PC7, PC8, PA8, PA9, PA10, PE10, PE9};
+int pwm_pins[] = {PD12, PD13, PD14, PD15, PA0, PA1, PA2, PA3};
+int ain_pins[] = {PC1, PC2, PC3};
 
 int i;  //Iterator
 extern int gpio_pins[];
@@ -23,12 +70,12 @@ int* pin_state;
 #define UART 5
 #define BATCH 6
 #define SPIBUS 7
+
 int mode = GPIO;
 
-#ifdef AEROCORE
 extern SPIClass spi;
 extern SPISettings spi_cfg;
-#endif
+
 
 
 
@@ -47,12 +94,7 @@ void setup() {
     digitalWrite(gpio_pins[i], LOW);
   }
  
-#ifndef AEROCORE  
-#ifdef PIN_SERIAL1_RX
-  Serial1.begin(9600);
-  Serial.println("Serial1 enabled");
-#endif //PIN_SERIAL1_RX
-#else
+
   SPI.begin();
   Serial1.begin(9600);
   Serial3.begin(9600);
@@ -60,7 +102,6 @@ void setup() {
   Serial7.begin(9600);
   Wire.setSCL(PIN_WIRE_SCL);
   Wire.setSDA(PIN_WIRE_SDA);
-#endif
   Wire.begin();
 }
 
@@ -104,11 +145,9 @@ void loop() {
       batch_mode();
       break;
     case SPIBUS:
-#ifdef AEROCORE
       Serial.println("SPI");
       spi_mode();
       break;
-#endif
     default:
       Serial.println("ERROR");
       mode = GPIO;
@@ -277,16 +316,9 @@ void uart_mode()
         mode = GPIO;
     }
   }
-#ifndef AEROCORE
-#ifdef PIN_SERIAL1_RX
-  Serial1.println("Hello World from Serial1!");
-#endif
-#else
   Serial1.println("Serial1");
-  Serial3.println("Serial3");
   Serial2.println("Serial2");
   Serial7.println("Serial7");
-#endif
 }
 
 void spi_mode()

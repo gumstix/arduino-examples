@@ -9,7 +9,15 @@ int pwm_pins[] = {PD7};
 int ain_pins[] = {};
 #endif
 #ifdef AEROCORE
+#include <HardwareSerial.h>
+#include <SPI.h> 
 int gpio_pins[] = {PB9, PB8, PC9, PB0, PE5, PE6, PC6, PC7, PC8, PA8, PA9, PA10, PE10, PE9};
 int pwm_pins[] = {PD12, PD13, PD14, PD15, PA0, PA1, PA2, PA3};
 int ain_pins[] = {PC1, PC2, PC3};
+#define HAVE_HWSERIAL7
+#define HAVE_HWSERIAL3
+#define HAVE_HWSERIAL2
+#define HAVE_HWSERIAL1
+SPIClass spi(PIN_SPI_MOSI, PIN_SPI_MISO, PIN_SPI_SCK, PIN_SPI_SS);
+SPISettings spi_cfg;
 #endif
