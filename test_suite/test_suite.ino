@@ -1,6 +1,6 @@
 //#define ROOMSENSE
 //#define STRATA
-#define AEROCORE
+//#define AEROCORE
 #include <Wire.h>
 #include "boards.h"
 
@@ -330,8 +330,8 @@ void batch_mode()
   for(i=1; i<4; i++)
   {
     int pwm_width = i*(256/4) - 1;
-    for(j=0; j<(sizeof(pwm_pins)/sizeof(int)); j++)
-      analogWrite(pwm_pins[j], pwm_width);
+//    for(j=0; j<(sizeof(pwm_pins)/sizeof(int)); j++)
+//      analogWrite(pwm_pins[j], pwm_width);
     delay(100);
   }
   adc_mode();
