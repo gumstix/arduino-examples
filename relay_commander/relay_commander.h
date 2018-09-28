@@ -6,7 +6,7 @@
 
 const int server_port = 80;
 
-const int num_relays = 10;
+const int num_relays = 3;
 
 const unsigned long debounce_delay = 50;
 
@@ -40,7 +40,7 @@ typedef enum serial_cmd_t { no_cmd,
                           } serial_cmd;
 
 
-
+const int n_valid_cmds = 7;
 char valid_cmds[] = { 
                       'w', // Set WiFi SSID
                       'p', // Set WiFi PSK
@@ -48,12 +48,12 @@ char valid_cmds[] = {
                       'l', // Lockout
                       't', // Toggle relay
                       'a', // Activate relay
-                      's'  // Deactivate relay
+                      'd'  // Deactivate relay
                     };
 
 
 char cmd[32];
-
+char response[64];
 
 int cmd_get_relay() {
   int relay = num_relays + 1;
