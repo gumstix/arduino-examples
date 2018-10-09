@@ -9,35 +9,31 @@
 #include "relay_commander.h"
 const char response_str[] = "HTTP/1.1 200 OK\nContent-Type: text/html\nConnection: close\n\n<!DOCTYPE HTML>\n<html>OK<br /></html>";
 int relay_clockwise[] =   {
-//                            PB3,
-//                            PA2,
-//                            PA4,
-//                            PA6,
-//                            PA8,
-//                            PA10,
-//                            PA16,
-//                            PA19,
-//                            PA21,
-//                            PA23
-                              0,
-                              1,
-                              2
+                            PB3,
+                            PA2,
+                            PA4,
+                            PA6,
+                            PA8,
+                            PA10,
+                            PA16,
+                            PA19,
+                            PA21,
+                            PA23
                           };
 int button_clockwise[] =  {
-//                            PB10,
-//                            PA3,
-//                            PA5,
-//                            PA7,
-//                            PA9,
-//                            PA11,
-//                            PA17,
-//                            PA20,
-//                            PA22,
-//                            PB2
-                              0,
-                              1,
-                              2
+                            PB10,
+                            PA3,
+                            PA5,
+                            PA7,
+                            PA9,
+                            PA11,
+                            PA17,
+                            PA20,
+                            PA22,
+                            PB2
                           };
+
+boolean console_connected;
 
 FlashStorage(wpa_credentials, wpa_data);
 
@@ -47,6 +43,9 @@ relay_state relay_states[num_relays];
 debounce_state buttons[num_relays];
 
 wpa_data credentials;
+
+IPAddress ip;
+
 int wifi_status = WL_IDLE_STATUS;
 
 int seq_index;
@@ -115,15 +114,15 @@ void _process_command(char key) {
     case 'c': // Connect to wifi and save credentials if successful
       Serial.print("Attempting to login to WiFi Network: ");
       Serial.println(credentials.ssid);
-//      if(attempt_login()) {
-//        wpa_credentials.write(credentials);
-//        Serial.println("Login successful!  New credentials saved!");
-//        strcpy(response,"okay");
-//      }
-//      else {
-//        Serial.println("Login failed!");
-//        strcpy(response,"fail connect");
-//      }
+      if(attempt_login()) {
+        wpa_credentials.write(credentials);
+        Serial.println("Login successful!  New credentials saved!");
+        strcpy(response,"okay");
+      }
+      else {
+        Serial.println("Login failed!");
+        strcpy(response,"fail connect");
+      }
       break;
     
     
@@ -145,10 +144,16 @@ void _process_command(char key) {
     case 't': //Toggle relay
       relay = cmd_get_relay();
       if(relay < num_relays) {
+        #ifdef DEBUG
+          Serial.println("relay in range");
+        #endif
         if(relay_states[relay].current == HIGH)  
           relay_states[relay].next = LOW;
         else
           relay_states[relay].next = HIGH;
+          #ifdef DEBUG
+            Serial.println("relay was low");
+          #endif
         strcpy(response,"okay");
       }
       else
@@ -178,9 +183,13 @@ void _process_command(char key) {
       else
         strcpy(response,"fail range");
       break;
-      default:
+    default:
         strcpy(response,"fail cmd");
+        #ifdef DEBUG
+          Serial.println('response');
+        #endif
       break;
+
   }
 }
 
@@ -195,10 +204,15 @@ void _process_command(char key) {
 // SET_NEXT_STATE
 // Setup value to be written to each relay
 
-void set_next_state(int i, int toggle) {
-  if(toggle == HIGH) {
-    relay_states[i].next = !relay_states[i].next;
+void set_next_state(int i) {
+  if(buttons[i].value == LOW && buttons[i].last_value == HIGH) {
+    relay_states[i].next = !relay_states[i].current;
   }
+  else
+  {
+    relay_states[i].next = relay_states[i].current;
+  }
+  buttons[i].last_value = buttons[i].value;
 }
 //////////////////////////////////////////////////////////////////
 // GET_ALL_RELAYS
@@ -226,8 +240,8 @@ void set_all_relays() {
         Serial.print(": ");
         Serial.print(relay_states[i].next);
         Serial.print("\n---------------\n");
-        relay_states[i].next = relay_states[i].current;
       #endif
+      relay_states[i].current = relay_states[i].next;
     }
   }
 }
@@ -243,22 +257,24 @@ void set_all_relays() {
 // Store stabilized value for relay pushbuttons.
 
 void get_debounced(int i) {
-//  buttons[i].button_state = digitalRead(button_clockwise[i]);
-//  if(buttons[i].button_state != buttons[i].last_button_state) {
-//    buttons[i].last_debounce_time = millis();
-//  }
-//  if((millis() - buttons[i].last_debounce_time) > debounce_delay 
-//                  && buttons[i].button_state != buttons[i].value) {
-//    buttons[i].value = buttons[i].button_state;
-//    buttons[i].last_debounce_time = 0;
-//    #ifdef DEBUG
-//      Serial.print("---------------\nDebounce Relay Button:\n");
-//      Serial.print(i);
-//      Serial.print(": ");
-//      Serial.print(buttons[i].value);
-//      Serial.print("\n---------------\n");
-//    #endif
-//  }
+  buttons[i].button_state = digitalRead(button_clockwise[i]);
+  if(buttons[i].button_state != buttons[i].last_button_state) {
+    buttons[i].last_debounce_time = millis();
+    buttons[i].last_button_state = buttons[i].button_state;
+  }
+  else if(buttons[i].last_debounce_time != 0
+                  && (millis() - buttons[i].last_debounce_time) > debounce_delay 
+                  && buttons[i].button_state != buttons[i].value) {
+    buttons[i].value = buttons[i].button_state;
+    buttons[i].last_debounce_time = 0;
+    #ifdef DEBUG
+      Serial.print("---------------\nDebounce Relay Button:\n");
+      Serial.print(i);
+      Serial.print(": ");
+      Serial.print(buttons[i].value);
+      Serial.print("\n---------------\n");
+    #endif
+  }
 }
 
 
@@ -333,7 +349,38 @@ void console_process_command() {
   strcpy(cmd, "");
 }
 
+/////////////////////////////////////////////////
+// CONSOLE_PUT_RESPONSE
+// Display console menu after processing command
+//
 void console_put_response() {
+  Serial.println("\n\n\n\n\n\n\-------------------------------------------");
+  Serial.println("|             Relay Commander             |");
+  Serial.println("| Options:                                |");
+  Serial.println("| --------                                |");
+  Serial.println("|     l      --->  Lockout buttons and    |");
+  Serial.println("|                  WiFi                   |");
+  Serial.println("|     t n    --->  Toggle relay #n        |");
+  Serial.println("|     d n    --->  Disable relay #n       |");
+  Serial.println("|     a n    --->  Activate realy #n      |");
+  Serial.println("|     w      --->  Set WiFi SSID          |");
+  Serial.println("|     p      --->  Set WiFi passkey       |");
+  Serial.println("|     c      --->  Connect to WiFi and    |");
+  Serial.println("|                  and save SSID/PSK to   |");
+  Serial.println("|                  flash memory           |");
+  Serial.println("-------------------------------------------");
+  Serial.print("   Wifi Status:    ");
+  if(WiFi.status() == WL_CONNECTED)
+  {
+    Serial.println("CONNECTED");
+    Serial.print("   IP address:     ");
+    Serial.println(ip);
+  }
+  else
+    Serial.println("DISCONNECTED");
+  Serial.print("SSID = ");
+  Serial.println(credentials.ssid);
+  Serial.print("\n\n$>   ");
   return;
 }
 
@@ -356,12 +403,13 @@ bool attempt_login() {
     #endif
     wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
     attempts++;
-    delay(5000);
+    delay(500);
   }
   #ifdef DEBUG
     if(wifi_status == WL_CONNECTED){
       Serial.println("---------------\nWiFi Connected\n---------------");
       server.begin();
+      ip = WiFi.localIP();
     }
     else {
       Serial.println("---------------\nWiFi Could Not Connect\n---------------");
@@ -370,22 +418,24 @@ bool attempt_login() {
   return(wifi_status == WL_CONNECTED);
 }
 
-void tcp_get_command() {
+boolean tcp_get_command() {
   char this_line[255];
   char c[] = {0, 0};
+  boolean ret = false;
+  boolean line_is_blank = true;
   strcpy(this_line, "");
-  if(!client) 
-    client = server.available();
+  client = server.available();
   if(client) {
     while(client.connected()) {
       if(client.available()) {
         c[0] = client.read();
-        if(c != "\r")
-          strcat(this_line, c);
+        Serial.print(c);
         if(c == "\n") {
-          if(strcmp(this_line, c)) {
+           #ifdef DEBUG
+             Serial.println(this_line);
+            #endif
+          if(line_is_blank == true) {
             tcp_put_response(client);
-            break;
           }
           if(strstr(this_line, "GET") == this_line) {
             char* cmd_end = strstr(this_line, " HTTP");
@@ -393,15 +443,25 @@ void tcp_get_command() {
             strcpy(cmd, &this_line[5]);
             #ifdef DEBUG
               Serial.print("Command: ");
+             
               Serial.println(cmd);
             #endif
+            ret = true;
           }
           strcpy(this_line, "");
+          line_is_blank = true;
+        }
+        else if(c != "\r") {
+          strcat(this_line, c);
+          #ifdef DEBUG
+              Serial.print(".");
+          #endif
+          line_is_blank = false;
         }
       }
     }
   }
-  return;  
+  return ret;  
 }
 
   void tcp_process_command() {
@@ -414,7 +474,11 @@ void tcp_get_command() {
       strcpy(cmd, "");
     }
     else
+    {
       _process_command(key);
+      return;
+    }
+    return;
   }
 
   void tcp_put_response(WiFiClient client) {
@@ -456,47 +520,76 @@ void setup() {
     
     pinMode(button_clockwise[i], INPUT);
     
-    buttons[i].button_state = LOW;
-    buttons[i].last_button_state = LOW;
+    buttons[i].button_state = digitalRead(button_clockwise[i]);
+    buttons[i].last_button_state = buttons[i].button_state;
     buttons[i].last_debounce_time = 0;
-    buttons[i].value = LOW;
+    buttons[i].value = buttons[i].button_state;
+    buttons[i].last_value = buttons[i].value;
   }
   lockout = none;
   seq_index = 0;
   
-  //credentials = wpa_credentials.read();
-
-  //attempt_login();
+  #ifdef DEBUG
+    strcpy(credentials.ssid, "GRC");
+    strcpy(credentials.psk, "zyro4you");
+  #else
+    credentials = wpa_credentials.read();
+  #endif
+  attempt_login();
   cli_in[0] = 0;
   cli_in[1] = 0;
   strcpy(cmd, "");
+  if(Serial)
+    console_connected = true;
+  else
+    console_connected = false;
+  if(console_connected)
+    console_put_response();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
-  if(lockout == none) {
-    get_debounced(seq_index);
-    set_next_state(seq_index, buttons[seq_index].value);
+  if(!console_connected and Serial) {
+    console_connected = true;
+    console_put_response();
+  }
+  if(console_connected and !Serial) {
+    console_connected = false;
   }
   
+  if(lockout == none) {
+    get_debounced(seq_index);
+    set_next_state(seq_index);
+  }
+
   if(lockout != network) {
     if(console_get_command() == true) {
-      #ifdef DEBUG
+      console_process_command();
+       #ifdef DEBUG
         Serial.print("cmd recieved: ");
         Serial.println(cmd);
+        Serial.print("Response: ");
+        Serial.println(response);
       #endif
-      console_process_command();
       strcpy(cmd, "");
+      console_put_response();
     }
-    console_put_response();
   }
   
   if(lockout != console) {
     if(WiFi.status() != WL_CONNECTED && lockout != none)
       lockout = none;
     else if(WiFi.status() == WL_CONNECTED) {
-      tcp_get_command();
-      tcp_process_command();
+      if(tcp_get_command() == true) {
+        tcp_process_command();
+        #ifdef DEBUG
+          Serial.print("wifi cmd recieved: ");
+          Serial.println(cmd);
+          Serial.print("Response: ");
+          Serial.println(response);
+        #endif
+        strcpy(cmd, "");
+      }
     }    
   }
   

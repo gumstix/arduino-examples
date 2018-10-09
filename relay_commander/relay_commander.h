@@ -6,7 +6,7 @@
 
 const int server_port = 80;
 
-const int num_relays = 3;
+const int num_relays = 10;
 
 const unsigned long debounce_delay = 50;
 
@@ -25,6 +25,7 @@ typedef struct debounce_state_t {
   int last_button_state;
   unsigned long last_debounce_time;
   int value;
+  int last_value;
 } debounce_state;
 
 typedef enum lockout_value_t {none, console, network} lockout_value;
@@ -61,9 +62,14 @@ int cmd_get_relay() {
   while(relay > num_relays && i <=32) {
     if(cmd[i] >= '0' && cmd[i] < ('0' + num_relays)) {
             relay = atoi(&(cmd[i]));
+            #ifdef DEBUG
+              Serial.print("Relay #: ");
+              Serial.println(relay);
+            #endif
           }
     else if(cmd[i] == 0 || cmd[i] =='\n')
       break;
+    i++;
   }
   return relay;
 }
