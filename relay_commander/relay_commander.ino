@@ -528,11 +528,6 @@ void setup() {
   }
   lockout = none;
   seq_index = 0;
-  
-  #ifdef DEBUG
-    strcpy(credentials.ssid, "GRC");
-    strcpy(credentials.psk, "zyro4you");
-  #else
     credentials = wpa_credentials.read();
   #endif
   attempt_login();
