@@ -1,13 +1,17 @@
 #include <FlashAsEEPROM.h>
 #include <FlashStorage.h>
 
-#define MAX_WIFI_ATTEMPTS 5
+#define MAX_WIFI_ATTEMPTS 3
 #define DEBUG
 
 #include <SPI.h>
 #include <WiFi101.h>
 #include "relay_commander.h"
+
+// Response to send to HTTP client
 const char response_str[] = "HTTP/1.1 200 OK\nContent-Type: text/html\nConnection: close\n\n<!DOCTYPE HTML>\n<html>OK<br /></html>";
+
+// Defines order of relay GPIOs clockwise from bottom-left
 int relay_clockwise[] =   {
                             PB3,
                             PA2,
@@ -20,6 +24,8 @@ int relay_clockwise[] =   {
                             PA21,
                             PA23
                           };
+
+// defines pushbutton GPIOs clockwise from bottom-left
 int button_clockwise[] =  {
                             PB10,
                             PA3,
@@ -35,19 +41,23 @@ int button_clockwise[] =  {
 
 boolean console_connected;
 
+// FlashAsEEPROM entity for storing  WPA login credentials in NVM
 FlashStorage(wpa_credentials, wpa_data);
 
 lockout_value lockout;
 
+// Arrays of state information for each relay and pushbutton
 relay_state relay_states[num_relays];
 debounce_state buttons[num_relays];
 
+// Global WPA credential variable, for exchanging with NVM
 wpa_data credentials;
 
 IPAddress ip;
 
 int wifi_status = WL_IDLE_STATUS;
 
+// For iterating in sequence over PBs over multiple loop iterations
 int seq_index;
 
 char cli_in[2];
@@ -56,9 +66,11 @@ WiFiServer server(server_port);
 
 WiFiClient client;
 
+
 ////////////////////////////////////////////////////////
 // IS_VALID_CMD
-// Verify command
+// Verify command exists
+//
 
 bool is_valid_cmd(char c) {
   for(int i = 0; i < n_valid_cmds; i++) {
@@ -72,11 +84,13 @@ bool is_valid_cmd(char c) {
   return false;
 }
 
+
+
 //////////////////////////////////////////////////////////////////
 // _PROCESS_COMMAND
 // Interface-agnostic switch statement for updating relay states
 // based on cmd value
-
+/
 
 void _process_command(char key) {
   int len = 0;
@@ -183,10 +197,11 @@ void _process_command(char key) {
       else
         strcpy(response,"fail range");
       break;
+      
     default:
         strcpy(response,"fail cmd");
         #ifdef DEBUG
-          Serial.println('response');
+          Serial.println(response);
         #endif
       break;
 
@@ -203,6 +218,7 @@ void _process_command(char key) {
 //////////////////////////////////////////////////////////////////
 // SET_NEXT_STATE
 // Setup value to be written to each relay
+//
 
 void set_next_state(int i) {
   if(buttons[i].value == LOW && buttons[i].last_value == HIGH) {
@@ -214,6 +230,8 @@ void set_next_state(int i) {
   }
   buttons[i].last_value = buttons[i].value;
 }
+
+
 //////////////////////////////////////////////////////////////////
 // GET_ALL_RELAYS
 // Get actual pin values for each relay to ensure the correct
@@ -229,6 +247,7 @@ void get_all_relays() {
 /////////////////////////////////////////////////////////////////
 // SET_ALL_RELAYS
 // Toggle relays set to change state
+//
 
 void set_all_relays() {
   for(int i = 0; i < num_relays; i++) {
@@ -246,15 +265,19 @@ void set_all_relays() {
   }
 }
 
+
+
+
+
 ////////////////////////////////////////////////////////////////////
 //                  PUSHBUTTON COMMAND SYSTEM                     //
 ////////////////////////////////////////////////////////////////////
 
 
-
 //////////////////////////////////////////////////////////////////////
 // GET_DEBOUNCED
-// Store stabilized value for relay pushbuttons.
+// Store stabilized value for relay pushbuttons (real-time).
+//
 
 void get_debounced(int i) {
   buttons[i].button_state = digitalRead(button_clockwise[i]);
@@ -282,9 +305,12 @@ void get_debounced(int i) {
 //                    CONSOLE COMMAND SYSTEM                      //
 ////////////////////////////////////////////////////////////////////
 
+
 ////////////////////////////////////
 // CONSOLE_READ
-// Get command from cmd line
+// Get input from UART cmd line
+//
+
 int console_read(char* str) {
   cli_in[0] = Serial.read();
   Serial.print(cli_in[0]);
@@ -301,6 +327,7 @@ int console_read(char* str) {
 /////////////////////////////////////////////////
 // CONSOLE_GET_COMMAND
 // Collect any valid input from serial console
+//
 
 boolean console_get_command() {
   if(Serial.available()) {
@@ -309,16 +336,10 @@ boolean console_get_command() {
         Serial.println("Console Get Command:");
     #endif
     int len = strlen(cmd);
-    #ifdef DEBUG
-      Serial.println(len);
-    #endif
     int cr = 0;
     if(len < 31)
       cr  = console_read(cmd);
     else {
-      #ifdef DEBUG
-        Serial.println(cmd);
-      #endif
       cr = 1;
     }
     if(cr == 1) {
@@ -369,16 +390,16 @@ void console_put_response() {
   Serial.println("|                  and save SSID/PSK to   |");
   Serial.println("|                  flash memory           |");
   Serial.println("-------------------------------------------");
-  Serial.print("   Wifi Status:    ");
+  Serial.print("\tWifi Status:    ");
   if(WiFi.status() == WL_CONNECTED)
   {
     Serial.println("CONNECTED");
-    Serial.print("   IP address:     ");
+    Serial.print("\tIP address:     ");
     Serial.println(ip);
   }
   else
     Serial.println("DISCONNECTED");
-  Serial.print("SSID = ");
+  Serial.print("\tSSID = ");
   Serial.println(credentials.ssid);
   Serial.print("\n\n$>   ");
   return;
@@ -429,21 +450,19 @@ boolean tcp_get_command() {
     while(client.connected()) {
       if(client.available()) {
         c[0] = client.read();
-        Serial.print(c);
+        #ifdef DEBUG
+          Serial.print(c);
+        #endif
         if(c == "\n") {
-           #ifdef DEBUG
-             Serial.println(this_line);
-            #endif
           if(line_is_blank == true) {
-            tcp_put_response(client);
+            client.println(response_str);
           }
-          if(strstr(this_line, "GET") == this_line) {
+          else if(strstr(this_line, "GET") == this_line) {
             char* cmd_end = strstr(this_line, " HTTP");
             *cmd_end = 0;
             strcpy(cmd, &this_line[5]);
             #ifdef DEBUG
               Serial.print("Command: ");
-             
               Serial.println(cmd);
             #endif
             ret = true;
@@ -453,9 +472,6 @@ boolean tcp_get_command() {
         }
         else if(c != "\r") {
           strcat(this_line, c);
-          #ifdef DEBUG
-              Serial.print(".");
-          #endif
           line_is_blank = false;
         }
       }
@@ -464,32 +480,17 @@ boolean tcp_get_command() {
   return ret;  
 }
 
-  void tcp_process_command() {
-    #ifdef DEBUG
-      Serial.println("TCP Process Command!");
-    #endif
-    char key = cmd[0];
-    if(!is_valid_cmd(key) or key == 'w' or key == 'p')
-    {
-      strcpy(cmd, "");
-    }
-    else
-    {
-      _process_command(key);
-      return;
-    }
-    return;
+void tcp_process_command() {
+  #ifdef DEBUG
+    Serial.println("TCP Process Command!");
+  #endif
+  char key = cmd[0];
+  if(is_valid_cmd(key) and key != 'w' and key != 'p')
+  {
+    _process_command(key);
   }
-
-  void tcp_put_response(WiFiClient client) {
-    client.println(response_str);
-    return;
-  }
-
-
-
-
-
+  return;
+}
 
   
 
