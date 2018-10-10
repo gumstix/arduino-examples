@@ -90,7 +90,7 @@ bool is_valid_cmd(char c) {
 // _PROCESS_COMMAND
 // Interface-agnostic switch statement for updating relay states
 // based on cmd value
-/
+//
 
 void _process_command(char key) {
   int len = 0;
@@ -530,7 +530,7 @@ void setup() {
   lockout = none;
   seq_index = 0;
     credentials = wpa_credentials.read();
-  #endif
+
   attempt_login();
   cli_in[0] = 0;
   cli_in[1] = 0;
