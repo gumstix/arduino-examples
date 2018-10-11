@@ -1,6 +1,7 @@
 #ifndef __RELAY_COMMANDER_H__
 #define __RELAY_COMMANDER_H__
 
+#define WIFI_LED PB22
 #define MAX_WIFI_ATTEMPTS 5
 #define DEBUG
 
@@ -72,6 +73,22 @@ int cmd_get_relay() {
     i++;
   }
   return relay;
+}
+
+void unescape(char *str) {
+  int i = 0;
+  char c = ' ';
+  do {
+    c = str[i];
+    if(c == '%'){
+      str[i] = ' ';
+      str[i+1] = ' ';
+      str[i+2] = ' ';
+      i += 2;
+    }
+    i++;
+  }while(c != 0);
+  
 }
 
 #endif

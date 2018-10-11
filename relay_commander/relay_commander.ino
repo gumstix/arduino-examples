@@ -7,7 +7,13 @@
 #include <SPI.h>
 #include <WiFi101.h>
 #include "relay_commander.h"
-const char response_str[] = "HTTP/1.1 200 OK\nContent-Type: text/html\nConnection: close\n\n<!DOCTYPE HTML>\n<html>OK<br /></html>";
+#ifdef DEBUG
+#include "debug.h"
+#endif
+const int response_len = 10;
+String response_str[] = {"HTTP/1.1 200 OK", "Content-Type: text/html", "Connection: close", "", "<!DOCTYPE HTML>", "<html>", "OK", "<br />", "</html>", ""};
+
+String nop_response_str[] = {"HTTP/1.1 200 OK", "Content-Type: text/html", "Connection: close", "", "<!DOCTYPE HTML>", "<html>", "NOT AVAILABLE", "<br />", "</html>", ""};
 int relay_clockwise[] =   {
                             PB3,
                             PA2,
@@ -78,7 +84,7 @@ bool is_valid_cmd(char c) {
 // based on cmd value
 
 
-void _process_command(char key) {
+void _process_command(char key, char source) {
   int len = 0;
   int relay = num_relays + 1;
   switch(key) {
@@ -128,11 +134,16 @@ void _process_command(char key) {
     
     
     case 'l': //Lockout pushbuttons and WiFi
+      lockout_value new_lock; 
+      if(source == 'n') 
+        new_lock = network;
+      else if (source == 'c')
+        new_lock = console;
       if(lockout == none) {
-        lockout = console;
-        Serial.println("Console Lockout Enabled!");
+        lockout = new_lock;
+        Serial.println("Lockout Enabled!");
       }
-      else if(lockout == console) {
+      else if(lockout == new_lock) {
         lockout = none;
         Serial.println("Console Lockout Disabled!");
       }
@@ -338,7 +349,7 @@ void console_process_command() {
   int len = 0;
   if (strlen(cmd) > 0) {
     char key = cmd[0];
-    _process_command(key);
+    _process_command(key, 'c');
   }
   strcpy(cmd, "");
 }
@@ -374,6 +385,14 @@ void console_put_response() {
     Serial.println("DISCONNECTED");
   Serial.print("\tSSID = ");
   Serial.println(credentials.ssid);
+  Serial.print("\tLockout: ");
+  if(lockout == console)
+    Serial.println("Console");
+  else if (lockout == network)
+    Serial.println("Network");
+  else
+    Serial.println("None");
+  
   Serial.print("\n\n$>   ");
   return;
 }
@@ -394,8 +413,10 @@ bool attempt_login() {
     #ifdef DEBUG
       Serial.print("Attempting to connect to SSID: ");
       Serial.println(credentials.ssid);
+      wifi_status = WiFi.begin(ssid, psk);
+    #else
+      wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
     #endif
-    wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
     attempts++;
     delay(500);
   }
@@ -426,14 +447,23 @@ boolean tcp_get_command() {
         #ifdef DEBUG
           Serial.print(c);
         #endif
-        if(c == "\n") {
+        if(c[0] == '\n') {
           if(line_is_blank == true) {
-            client.println(response_str);
+            for(int i = 0; i < response_len; i++) {
+              client.println(response_str[i]);
+              #ifdef DEBUG
+                Serial.println(response_str[i]);
+              #endif
+            }
+            delay(1);
+            client.stop();
           }
           else if(strstr(this_line, "GET") == this_line) {
             char* cmd_end = strstr(this_line, " HTTP");
+            Serial.println(this_line);
             *cmd_end = 0;
             strcpy(cmd, &this_line[5]);
+            unescape(cmd);
             #ifdef DEBUG
               Serial.print("Command: ");
              
@@ -444,14 +474,15 @@ boolean tcp_get_command() {
           strcpy(this_line, "");
           line_is_blank = true;
         }
-        else if(c != "\r") {
+        else if(c[0] != '\r') {
           strcat(this_line, c);
           line_is_blank = false;
         }
       }
     }
+    return ret;
   }
-  return ret;  
+  
 }
 
   void tcp_process_command() {
@@ -460,10 +491,32 @@ boolean tcp_get_command() {
     #endif
     char key = cmd[0];
   if(is_valid_cmd(key) and key != 'w' and key != 'p')
-      _process_command(key);
+      _process_command(key, 'n');
     return;
   }
 
+void tcp_nop_command() {
+  client = server.available();
+  char c;
+  if(client) {
+    while(client.connected()) {
+      while(client.available()) {
+        c = client.read();
+        #ifdef DEBUG
+          Serial.print(c);
+        #endif
+      }
+      for(int i = 0; i < response_len; i++) {
+        client.println(nop_response_str[i]);
+        #ifdef DEBUG
+          Serial.println(nop_response_str[i]);
+        #endif
+      }
+      delay(1);
+      client.stop();
+    }
+  }
+}
 
 
 
@@ -520,9 +573,18 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
+  #ifdef DEBUG
+    char test_string[] = "Hello%20You\n";
+  #endif
   if(!console_connected and Serial) {
     console_connected = true;
+    #ifdef DEBUG
+      Serial.println(test_string);
+      unescape(test_string);
+      Serial.println(test_string);
+    #endif
     console_put_response();
+        
   }
   if(console_connected and !Serial) {
     console_connected = false;
@@ -562,6 +624,10 @@ void loop() {
         strcpy(cmd, "");
       }
     }    
+  }
+
+  if(lockout == console) {
+    tcp_nop_command();
   }
   
   get_all_relays();
