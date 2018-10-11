@@ -309,16 +309,10 @@ boolean console_get_command() {
         Serial.println("Console Get Command:");
     #endif
     int len = strlen(cmd);
-    #ifdef DEBUG
-      Serial.println(len);
-    #endif
     int cr = 0;
     if(len < 31)
       cr  = console_read(cmd);
     else {
-      #ifdef DEBUG
-        Serial.println(cmd);
-      #endif
       cr = 1;
     }
     if(cr == 1) {
@@ -369,16 +363,16 @@ void console_put_response() {
   Serial.println("|                  and save SSID/PSK to   |");
   Serial.println("|                  flash memory           |");
   Serial.println("-------------------------------------------");
-  Serial.print("   Wifi Status:    ");
+  Serial.print("\tWifi Status:    ");
   if(WiFi.status() == WL_CONNECTED)
   {
     Serial.println("CONNECTED");
-    Serial.print("   IP address:     ");
+    Serial.print("\tIP address:     ");
     Serial.println(ip);
   }
   else
     Serial.println("DISCONNECTED");
-  Serial.print("SSID = ");
+  Serial.print("\tSSID = ");
   Serial.println(credentials.ssid);
   Serial.print("\n\n$>   ");
   return;
@@ -429,15 +423,14 @@ boolean tcp_get_command() {
     while(client.connected()) {
       if(client.available()) {
         c[0] = client.read();
-        Serial.print(c);
+        #ifdef DEBUG
+          Serial.print(c);
+        #endif
         if(c == "\n") {
-           #ifdef DEBUG
-             Serial.println(this_line);
-            #endif
           if(line_is_blank == true) {
-            tcp_put_response(client);
+            client.println(response_str);
           }
-          if(strstr(this_line, "GET") == this_line) {
+          else if(strstr(this_line, "GET") == this_line) {
             char* cmd_end = strstr(this_line, " HTTP");
             *cmd_end = 0;
             strcpy(cmd, &this_line[5]);
@@ -453,9 +446,6 @@ boolean tcp_get_command() {
         }
         else if(c != "\r") {
           strcat(this_line, c);
-          #ifdef DEBUG
-              Serial.print(".");
-          #endif
           line_is_blank = false;
         }
       }
@@ -469,23 +459,10 @@ boolean tcp_get_command() {
       Serial.println("TCP Process Command!");
     #endif
     char key = cmd[0];
-    if(!is_valid_cmd(key) or key == 'w' or key == 'p')
-    {
-      strcpy(cmd, "");
-    }
-    else
-    {
+  if(is_valid_cmd(key) and key != 'w' and key != 'p')
       _process_command(key);
-      return;
-    }
     return;
   }
-
-  void tcp_put_response(WiFiClient client) {
-    client.println(response_str);
-    return;
-  }
-
 
 
 
@@ -529,7 +506,6 @@ void setup() {
   lockout = none;
   seq_index = 0;
     credentials = wpa_credentials.read();
-  #endif
   attempt_login();
   cli_in[0] = 0;
   cli_in[1] = 0;
