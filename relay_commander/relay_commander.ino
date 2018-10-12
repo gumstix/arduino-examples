@@ -2,14 +2,11 @@
 #include <FlashStorage.h>
 
 #define MAX_WIFI_ATTEMPTS 3
-#define DEBUG
 
 #include <SPI.h>
 #include <WiFi101.h>
 #include "relay_commander.h"
-#ifdef DEBUG
-#include "debug.h"
-#endif
+
 const int response_len = 10;
 String response_str[] = {"HTTP/1.1 200 OK", "Content-Type: text/html", "Connection: close", "", "<!DOCTYPE HTML>", "<html>", "OK", "<br />", "</html>", ""};
 
@@ -69,9 +66,6 @@ WiFiClient client;
 bool is_valid_cmd(char c) {
   for(int i = 0; i < n_valid_cmds; i++) {
     if(c == valid_cmds[i]){
-      #ifdef DEBUG
-        Serial.println("VALID_COMMAND!");
-      #endif
       return true;
     }
   }
@@ -93,10 +87,8 @@ void _process_command(char key, char source) {
       Serial.print("Please enter WiFi SSID:   ");
       len = Serial.readBytesUntil('\r', credentials.ssid, 33);
       credentials.ssid[len] = 0;
-      #ifdef DEBUG
         Serial.print("WPA SSID = ");
         Serial.println(credentials.ssid);
-      #endif
       Serial.println("\nData will not be saved to FLASH until (c)onnect!"); 
       break;
     
@@ -107,10 +99,6 @@ void _process_command(char key, char source) {
       Serial.print("Please enter WiFi PSK:   ");
       len = Serial.readBytesUntil('\r', credentials.psk, 64);
       credentials.psk[len] = 0;
-      #ifdef DEBUG
-        Serial.print("WPA PSK = ");
-        Serial.println(credentials.psk);
-      #endif
       Serial.println("\nData will not be saved to FLASH until (c)onnect!");
       strcpy(response,"okay");
       break;
@@ -155,16 +143,10 @@ void _process_command(char key, char source) {
     case 't': //Toggle relay
       relay = cmd_get_relay();
       if(relay < num_relays) {
-        #ifdef DEBUG
-          Serial.println("relay in range");
-        #endif
         if(relay_states[relay].current == HIGH)  
           relay_states[relay].next = LOW;
         else
           relay_states[relay].next = HIGH;
-          #ifdef DEBUG
-            Serial.println("relay was low");
-          #endif
         strcpy(response,"okay");
       }
       else
@@ -196,9 +178,6 @@ void _process_command(char key, char source) {
       break;
     default:
         strcpy(response,"fail cmd");
-        #ifdef DEBUG
-          Serial.println('response');
-        #endif
       break;
 
   }
@@ -245,13 +224,6 @@ void set_all_relays() {
   for(int i = 0; i < num_relays; i++) {
     if(relay_states[i].current != relay_states[i].next) {
       digitalWrite(relay_clockwise[i], relay_states[i].next);
-      #ifdef DEBUG
-        Serial.print("---------------\nRelay State Trasition:\n");
-        Serial.print(i);
-        Serial.print(": ");
-        Serial.print(relay_states[i].next);
-        Serial.print("\n---------------\n");
-      #endif
       relay_states[i].current = relay_states[i].next;
     }
   }
@@ -278,13 +250,6 @@ void get_debounced(int i) {
                   && buttons[i].button_state != buttons[i].value) {
     buttons[i].value = buttons[i].button_state;
     buttons[i].last_debounce_time = 0;
-    #ifdef DEBUG
-      Serial.print("---------------\nDebounce Relay Button:\n");
-      Serial.print(i);
-      Serial.print(": ");
-      Serial.print(buttons[i].value);
-      Serial.print("\n---------------\n");
-    #endif
   }
 }
 
@@ -301,9 +266,6 @@ int console_read(char* str) {
   Serial.print(cli_in[0]);
   strcat(cmd, cli_in);
   if(cli_in[0] == '\r') {
-    #ifdef DEBUG
-      Serial.println("cr EOL!");
-    #endif
     return 1;
   }
   return 0;
@@ -315,10 +277,6 @@ int console_read(char* str) {
 
 boolean console_get_command() {
   if(Serial.available()) {
-    #ifdef DEBUG
-      if(strlen(cmd) == 0)
-        Serial.println("Console Get Command:");
-    #endif
     int len = strlen(cmd);
     int cr = 0;
     if(len < 31)
@@ -341,10 +299,7 @@ boolean console_get_command() {
 //
 
 void console_process_command() {
-  #ifdef DEBUG
-    Serial.print("Process Command: ");
-    Serial.println(cmd);
-  #endif
+ 
   int relay = num_relays + 1;        
   int len = 0;
   if (strlen(cmd) > 0) {
@@ -358,22 +313,31 @@ void console_process_command() {
 // CONSOLE_PUT_RESPONSE
 // Display console menu after processing command
 //
+
+void console_home_location() {
+  Serial.write(27);   
+  Serial.print("[2J");    
+  Serial.write(27);
+  Serial.print("[H");
+}
+
 void console_put_response() {
-  Serial.println("\n\n\n\n\n\n\-------------------------------------------");
-  Serial.println("|             Relay Commander             |");
-  Serial.println("| Options:                                |");
-  Serial.println("| --------                                |");
-  Serial.println("|     l      --->  Lockout buttons and    |");
-  Serial.println("|                  WiFi                   |");
-  Serial.println("|     t n    --->  Toggle relay #n        |");
-  Serial.println("|     d n    --->  Disable relay #n       |");
-  Serial.println("|     a n    --->  Activate realy #n      |");
-  Serial.println("|     w      --->  Set WiFi SSID          |");
-  Serial.println("|     p      --->  Set WiFi passkey       |");
-  Serial.println("|     c      --->  Connect to WiFi and    |");
-  Serial.println("|                  and save SSID/PSK to   |");
-  Serial.println("|                  flash memory           |");
-  Serial.println("-------------------------------------------");
+  console_home_location();
+  Serial.println("\r\n\r\n┌─────────────────────────────────────────┐");
+  Serial.println("│             Relay Commander             │");
+  Serial.println("│ Options:                                │");
+  Serial.println("│ --------                                │");
+  Serial.println("│     l      --->  Lockout buttons and    │");
+  Serial.println("│                  WiFi                   │");
+  Serial.println("│     t n    --->  Toggle relay #n        │");
+  Serial.println("│     d n    --->  Disable relay #n       │");
+  Serial.println("│     a n    --->  Activate realy #n      │");
+  Serial.println("│     w      --->  Set WiFi SSID          │");
+  Serial.println("│     p      --->  Set WiFi passkey       │");
+  Serial.println("│     c      --->  Connect to WiFi and    │");
+  Serial.println("│                  and save SSID/PSK to   │");
+  Serial.println("│                  flash memory           │");
+  Serial.println("└─────────────────────────────────────────┘");
   Serial.print("\tWifi Status:    ");
   if(WiFi.status() == WL_CONNECTED)
   {
@@ -410,26 +374,15 @@ void console_put_response() {
 bool attempt_login() {
   int attempts = 0;
   while(wifi_status != WL_CONNECTED && attempts < MAX_WIFI_ATTEMPTS) {
-    #ifdef DEBUG
-      Serial.print("Attempting to connect to SSID: ");
-      Serial.println(credentials.ssid);
-      wifi_status = WiFi.begin(ssid, psk);
-    #else
-      wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
-    #endif
+    wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
     attempts++;
     delay(500);
   }
-  #ifdef DEBUG
     if(wifi_status == WL_CONNECTED){
-      Serial.println("---------------\nWiFi Connected\n---------------");
-      server.begin();
-      ip = WiFi.localIP();
+     ip = WiFi.localIP();
+     server.begin();
     }
-    else {
-      Serial.println("---------------\nWiFi Could Not Connect\n---------------");
-    }
-  #endif
+   
   return(wifi_status == WL_CONNECTED);
 }
 
@@ -444,16 +397,16 @@ boolean tcp_get_command() {
     while(client.connected()) {
       if(client.available()) {
         c[0] = client.read();
-        #ifdef DEBUG
+     
           Serial.print(c);
-        #endif
+     
         if(c[0] == '\n') {
           if(line_is_blank == true) {
             for(int i = 0; i < response_len; i++) {
               client.println(response_str[i]);
-              #ifdef DEBUG
+          
                 Serial.println(response_str[i]);
-              #endif
+          
             }
             delay(1);
             client.stop();
@@ -464,11 +417,11 @@ boolean tcp_get_command() {
             *cmd_end = 0;
             strcpy(cmd, &this_line[5]);
             unescape(cmd);
-            #ifdef DEBUG
-              Serial.print("Command: ");
+           
+            Serial.print("Command: ");
              
-              Serial.println(cmd);
-            #endif
+            Serial.println(cmd);
+       
             ret = true;
           }
           strcpy(this_line, "");
@@ -486,9 +439,6 @@ boolean tcp_get_command() {
 }
 
   void tcp_process_command() {
-    #ifdef DEBUG
-      Serial.println("TCP Process Command!");
-    #endif
     char key = cmd[0];
   if(is_valid_cmd(key) and key != 'w' and key != 'p')
       _process_command(key, 'n');
@@ -502,15 +452,11 @@ void tcp_nop_command() {
     while(client.connected()) {
       while(client.available()) {
         c = client.read();
-        #ifdef DEBUG
-          Serial.print(c);
-        #endif
+        Serial.print(c);
       }
       for(int i = 0; i < response_len; i++) {
         client.println(nop_response_str[i]);
-        #ifdef DEBUG
-          Serial.println(nop_response_str[i]);
-        #endif
+        Serial.println(nop_response_str[i]);
       }
       delay(1);
       client.stop();
@@ -573,16 +519,8 @@ void setup() {
 
 void loop() {
   // put your main code here, to run repeatedly:
-  #ifdef DEBUG
-    char test_string[] = "Hello%20You\n";
-  #endif
   if(!console_connected and Serial) {
     console_connected = true;
-    #ifdef DEBUG
-      Serial.println(test_string);
-      unescape(test_string);
-      Serial.println(test_string);
-    #endif
     console_put_response();
         
   }
@@ -598,12 +536,6 @@ void loop() {
   if(lockout != network) {
     if(console_get_command() == true) {
       console_process_command();
-       #ifdef DEBUG
-        Serial.print("cmd recieved: ");
-        Serial.println(cmd);
-        Serial.print("Response: ");
-        Serial.println(response);
-      #endif
       strcpy(cmd, "");
       console_put_response();
     }
@@ -615,12 +547,10 @@ void loop() {
     else if(WiFi.status() == WL_CONNECTED) {
       if(tcp_get_command() == true) {
         tcp_process_command();
-        #ifdef DEBUG
-          Serial.print("wifi cmd recieved: ");
-          Serial.println(cmd);
-          Serial.print("Response: ");
-          Serial.println(response);
-        #endif
+        Serial.print("wifi cmd recieved: ");
+        Serial.println(cmd);
+        Serial.print("Response: ");
+        Serial.println(response);
         strcpy(cmd, "");
       }
     }    

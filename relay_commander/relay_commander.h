@@ -3,7 +3,6 @@
 
 #define WIFI_LED PB22
 #define MAX_WIFI_ATTEMPTS 5
-#define DEBUG
 
 const int server_port = 80;
 
