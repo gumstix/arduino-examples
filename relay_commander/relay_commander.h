@@ -8,7 +8,7 @@ const int server_port = 80;
 
 const int num_relays = 10;
 
-const unsigned long debounce_delay = 50;
+const unsigned long debounce_delay = 10;
 
 typedef struct relay_state_t {
   int current;
