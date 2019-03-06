@@ -372,6 +372,11 @@ void console_put_response() {
 // to WIFI via WPA.
 
 bool attempt_login() {
+  #ifdef IP_ADDR
+    IPAddress conf_ip(IP_ADDR);
+    Serial.print(conf_ip);
+    WiFi.config(conf_ip);
+  #endif
   int attempts = 0;
   while(wifi_status != WL_CONNECTED && attempts < MAX_WIFI_ATTEMPTS) {
     wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
