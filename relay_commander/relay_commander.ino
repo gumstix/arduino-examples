@@ -81,12 +81,7 @@ void _process_command(char key, char source) {
   int len = 0;
   int relay = num_relays + 1;
   char ip_str[18];
-//  char tuple[] = {0, 0, 0, 0};
-//  uint8_t ip[4];
-//  int i;
-//  int j;
-//  int k;
-  IPAddress t;
+  IPAddress new_ip;
   
   switch(key) {
     case 'w': // Set wifi SSID
@@ -115,40 +110,12 @@ void _process_command(char key, char source) {
       Serial.print("Please enter IP address: ");
       len = Serial.readBytesUntil('\r', ip_str, 18);
       ip_str[len] = 0;
-      if(t.fromString(ip_str))
-        credentials.ip = t;
-      Serial.print("IPADDR:  "); t.printTo(Serial);
-//      Serial.println(ip_str);
-//      Serial.println(len);
-//      j = 0;
-//      i = 0;
-//      k = 0;
-//      while(i <= len && k < 4) {
-//        Serial.println(i);
-//        if(ip_str[i] != '.' && j < 3 && ip_str[i] >= '0' && ip_str[i] <= '9') {
-//          tuple[j] = ip_str[i];
-//          Serial.println(tuple);
-//          j++;
-//        }
-//        else if(ip_str[i] == '.' || i == len) {
-//          tuple[j] = 0;
-//          j = 0;
-//          ip[k] = atoi(tuple);
-//          Serial.print("Tuple:"); Serial.println(tuple);
-//          k++;
-//        }
-//        else {
-//          strcpy(response, "Invalid Character (Try again!)");
-//          i = len;
-//        }
-//        i++;
-//      }
-//      if(k == 4) {
-//        credentials.ip = IPAddress(ip[0], ip[1], ip[2], ip[3]);
-//        strcpy(response, "okay");
-//      }
-//      else
-//        strcpy(response, "Invalid IP address");
+      if(new_ip.fromString(ip_str)) {
+        credentials.ip = new_ip;
+        strcpy(response, "okay");
+      }
+      else
+        strcpy(response, "Invalid IP address");
       break;
     
     case 'c': // Connect to wifi and save credentials if successful
