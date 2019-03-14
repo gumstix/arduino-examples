@@ -20,6 +20,7 @@ typedef struct relay_state_t {
 typedef struct wpa_data_t {
   char ssid[33];
   char psk[64];
+  IPAddress ip;
 } wpa_data;
 
 typedef struct debounce_state_t {
@@ -39,11 +40,12 @@ typedef enum serial_cmd_t { no_cmd,
                             disconnect_wifi = 'd', 
                             enable_relay = 'e', 
                             disable_relay = 'd',
-                            lockout_serial = 'l'
+                            lockout_serial = 'l',
+                            ip_addr = 'i'
                           } serial_cmd;
 
 
-const int n_valid_cmds = 7;
+const int n_valid_cmds = 8;
 char valid_cmds[] = { 
                       'w', // Set WiFi SSID
                       'p', // Set WiFi PSK
@@ -51,7 +53,8 @@ char valid_cmds[] = {
                       'l', // Lockout
                       't', // Toggle relay
                       'a', // Activate relay
-                      'd'  // Deactivate relay
+                      'd',  // Deactivate relay
+                      'i'
                     };
 
 
