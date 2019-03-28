@@ -3,7 +3,7 @@
 
 #define WIFI_LED PB22
 #define MAX_WIFI_ATTEMPTS 5
-#define IP_ADDR 192, 168, 0, 165
+#define IP_ADDR 192, 168, 0, 188
 
 
 const int server_port = 80;
