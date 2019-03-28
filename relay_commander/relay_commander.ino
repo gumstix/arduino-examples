@@ -47,7 +47,6 @@ debounce_state buttons[num_relays];
 
 wpa_data credentials;
 
-IPAddress ip;
 
 int wifi_status = WL_IDLE_STATUS;
 
@@ -81,9 +80,12 @@ bool is_valid_cmd(char c) {
 void _process_command(char key, char source) {
   int len = 0;
   int relay = num_relays + 1;
+  char ip_str[18];
+  IPAddress new_ip;
+  
   switch(key) {
-    
     case 'w': // Set wifi SSID
+      Serial.flush();
       Serial.print("Please enter WiFi SSID:   ");
       len = Serial.readBytesUntil('\r', credentials.ssid, 33);
       credentials.ssid[len] = 0;
@@ -103,7 +105,18 @@ void _process_command(char key, char source) {
       strcpy(response,"okay");
       break;
     
-    
+    case 'i': // set IP address
+      Serial.flush();
+      Serial.print("Please enter IP address: ");
+      len = Serial.readBytesUntil('\r', ip_str, 18);
+      ip_str[len] = 0;
+      if(new_ip.fromString(ip_str)) {
+        credentials.ip = new_ip;
+        strcpy(response, "okay");
+      }
+      else
+        strcpy(response, "Invalid IP address");
+      break;
     
     case 'c': // Connect to wifi and save credentials if successful
       Serial.print("Attempting to login to WiFi Network: ");
@@ -176,6 +189,7 @@ void _process_command(char key, char source) {
       else
         strcpy(response,"fail range");
       break;
+      
     default:
         strcpy(response,"fail cmd");
       break;
@@ -334,6 +348,7 @@ void console_put_response() {
   Serial.println("│     a n    --->  Activate realy #n      │");
   Serial.println("│     w      --->  Set WiFi SSID          │");
   Serial.println("│     p      --->  Set WiFi passkey       │");
+  Serial.println("│     i      --->  Set IP Address         │");
   Serial.println("│     c      --->  Connect to WiFi and    │");
   Serial.println("│                  and save SSID/PSK to   │");
   Serial.println("│                  flash memory           │");
@@ -342,11 +357,12 @@ void console_put_response() {
   if(WiFi.status() == WL_CONNECTED)
   {
     Serial.println("CONNECTED");
-    Serial.print("\tIP address:     ");
-    Serial.println(ip);
   }
   else
     Serial.println("DISCONNECTED");
+  
+  Serial.print("\tIP address:     ");
+  Serial.println(credentials.ip);
   Serial.print("\tSSID = ");
   Serial.println(credentials.ssid);
   Serial.print("\tLockout: ");
@@ -372,11 +388,8 @@ void console_put_response() {
 // to WIFI via WPA.
 
 bool attempt_login() {
-  #ifdef IP_ADDR
-    IPAddress conf_ip(IP_ADDR);
-    Serial.print(conf_ip);
-    WiFi.config(conf_ip);
-  #endif
+  Serial.print(credentials.ip);
+  WiFi.config(credentials.ip);
   int attempts = 0;
   while(wifi_status != WL_CONNECTED && attempts < MAX_WIFI_ATTEMPTS) {
     wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
@@ -384,7 +397,7 @@ bool attempt_login() {
     delay(500);
   }
     if(wifi_status == WL_CONNECTED){
-     ip = WiFi.localIP();
+     credentials.ip = WiFi.localIP();
      server.begin();
     }
    
@@ -509,7 +522,14 @@ void setup() {
   }
   lockout = none;
   seq_index = 0;
-    credentials = wpa_credentials.read();
+  credentials.ip = INADDR_NONE;
+  credentials = wpa_credentials.read();
+  if(credentials.ip == INADDR_NONE)
+  #ifdef IP_ADDR
+    credentials.ip = IPAddress(IP_ADDR);
+  #else
+    credentials.ip = IPAddress(192, 168, 55, 64);
+  #endif
   attempt_login();
   cli_in[0] = 0;
   cli_in[1] = 0;
