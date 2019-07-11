@@ -1,8 +1,6 @@
 #include <FlashAsEEPROM.h>
 #include <FlashStorage.h>
 
-#define MAX_WIFI_ATTEMPTS 3
-
 #include <SPI.h>
 #include <WiFi101.h>
 #include "relay_commander.h"
@@ -320,7 +318,6 @@ void console_process_command() {
     char key = cmd[0];
     _process_command(key, 'c');
   }
-  strcpy(cmd, "");
 }
 
 /////////////////////////////////////////////////
@@ -415,19 +412,18 @@ boolean tcp_get_command() {
     while(client.connected()) {
       if(client.available()) {
         c[0] = client.read();
-     
-          Serial.print(c);
-     
+        
+        Serial.print(c);
+        
         if(c[0] == '\n') {
+          client.stop();
           if(line_is_blank == true) {
             for(int i = 0; i < response_len; i++) {
               client.println(response_str[i]);
-          
-                Serial.println(response_str[i]);
-          
+              
+              Serial.println(response_str[i]);
             }
             delay(1);
-            client.stop();
           }
           else if(strstr(this_line, "GET") == this_line) {
             char* cmd_end = strstr(this_line, " HTTP");
@@ -435,12 +431,14 @@ boolean tcp_get_command() {
             *cmd_end = 0;
             strcpy(cmd, &this_line[5]);
             unescape(cmd);
-           
-            Serial.print("Command: ");
-             
-            Serial.println(cmd);
-       
-            ret = true;
+            if(!is_valid_cmd(cmd[0])) {
+              strcpy(cmd, "");
+            }
+            else {
+              Serial.print("Command: ");
+              Serial.println(this_line);
+              ret = true;
+            }
           }
           strcpy(this_line, "");
           line_is_blank = true;
@@ -451,14 +449,16 @@ boolean tcp_get_command() {
         }
       }
     }
-    return ret;
   }
-  
+  client.stop();
+  return ret;
 }
 
   void tcp_process_command() {
     char key = cmd[0];
-  if(is_valid_cmd(key) and key != 'w' and key != 'p')
+    if(is_valid_cmd(key) && key != 'w' && key != 'p')
+      Serial.print("The Wifi Command being processed is: ");
+      Serial.print(key);
       _process_command(key, 'n');
     return;
   }
