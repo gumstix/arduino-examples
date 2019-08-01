@@ -1,0 +1,8 @@
+#ifndef _BLYNK_CONFIG_H_
+#define _BLYNK_CONFIG_H_
+
+char ssid[] = "your_wifi_ssid"
+char pass[] = "your_wifi_password"
+char auth[] = "your_blynk_auth"
+
+#endif

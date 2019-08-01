@@ -1,3 +1,11 @@
+#include <bittable.h>
+#include <FirmataDefines.h>
+#include <FirmataParser.h>
+#include <Firmata.h>
+#include <FirmataMarshaller.h>
+#include <FirmataConstants.h>
+#include <Boards.h>
+
 
 #include <WiFi101.h>
 #include <WiFiUdp.h>
@@ -9,8 +17,8 @@
 // On GEMMA M0: pin 0.
 // On Trinket M0: pin 4.
 // On Metro M4: 3, 6, 8, 11, A3 and MOSI
-#define PIN         PIN_SPI_MOSI
-#define NUM_PIXELS 129
+#define PIN         23
+#define NUM_PIXELS 256
 
 Adafruit_NeoPixel_ZeroDMA rgb_array(NUM_PIXELS, PIN, NEO_GRB+NEO_KHZ800);
 
@@ -213,4 +221,3 @@ void convertTime(unsigned long raw_time) {
   the_time[3] = minute%10;
   the_time[4] = sec;   
 }
-

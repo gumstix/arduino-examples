@@ -1,3 +1,4 @@
 settings.h
 *.bin
 *.hex
+*_config.h
