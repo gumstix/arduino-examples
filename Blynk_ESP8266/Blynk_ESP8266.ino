@@ -55,6 +55,7 @@ struct bme_data{
 struct bme_data sensor_data;
 int uvindex;
 Adafruit_VEML6070 uv = Adafruit_VEML6070();
+WidgetBridge bridge1(V1);
 
 // You should get Auth Token in the Blynk App.
 // Go to the Project Settings (nut icon).
@@ -71,14 +72,16 @@ uint32_t getAbsoluteHumidity(float temperature, float humidity) {
 
 void bme_get() {
   sensor_data.temp = bme.readTemperature();
-  sensor_data.pres = bme.readPressure();
+  sensor_data.pres = bme.readPressure()/10.0;
   sensor_data.hum = bme.readHumidity();
   
   float hum = getAbsoluteHumidity(sensor_data.temp, hum);
   Serial.println(hum);
 }
 
-
+BLYNK_CONNECTED() {
+  bridge1.setAuthToken("4FstxCQ0xRtZO8qNAc0glNVniYVspzZY");
+}
 
 void setup()
 {
@@ -92,7 +95,7 @@ void setup()
     Serial.println("BME connection failed!");
     while(1);
   }
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, IPAddress(192, 168, 0, 121), 8080);
 }
 
 void loop()
@@ -102,11 +105,11 @@ void loop()
   if (nextPing)
   {
     uvindex = uv.readUV();
-    Blynk.virtualWrite(0, uvindex);
+    bridge1.virtualWrite(V0, uvindex);
     bme_get();
-    Blynk.virtualWrite(1, sensor_data.temp);
-    Blynk.virtualWrite(2, sensor_data.pres / 100.0F);
-    Blynk.virtualWrite(3, sensor_data.hum);
+    bridge1.virtualWrite(V1, sensor_data.temp);
+    bridge1.virtualWrite(V2, sensor_data.pres / 100.0F);
+    bridge1.virtualWrite(V3, sensor_data.hum);
     Serial.print("UV Value:    "); Serial.println(uvindex);
     Serial.print("Temperature: "); Serial.println(sensor_data.temp);
     Serial.print("Pressure:    "); Serial.println(sensor_data.pres);

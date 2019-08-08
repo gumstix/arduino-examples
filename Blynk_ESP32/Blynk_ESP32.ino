@@ -15,6 +15,7 @@ Adafruit_SGP30 sgp;
 #define SEALEVELPRESSURE_HPA (1016.0)
 
 Adafruit_BME680 bme; // I2C
+WidgetBridge bridge1(V8);
 
 struct sgp_data{
   int tvoc;
@@ -79,6 +80,10 @@ void get_bme_data(){
   }
   bme_d.alt = bme.readAltitude(SEALEVELPRESSURE_HPA);
 }
+BLYNK_CONNECTED() {
+  bridge1.setAuthToken("4FstxCQ0xRtZO8qNAc0glNVniYVspzZY");
+}
+
 void setup() {
   Serial.begin(9600);
   Wire.begin(SDA_PIN, SCL_PIN);
@@ -106,7 +111,7 @@ void setup() {
 
   sgp.setHumidity(getAbsoluteHumidity(bme_d.temp, bme_d.pres));
 
-  Blynk.begin(auth, ssid, pass);
+  Blynk.begin(auth, ssid, pass, IPAddress(192,168,0,121), 8080);
 }
 
 
@@ -123,6 +128,17 @@ void loop() {
   Blynk.virtualWrite(5, bme_d.pres);
   Blynk.virtualWrite(6, bme_d.hum);
   Blynk.virtualWrite(7, bme_d.gas);
+  
+  bridge1.virtualWrite(7, sgp_d.tvoc);
+  bridge1.virtualWrite(8, sgp_d.eco2);
+  bridge1.virtualWrite(9, sgp_d.raw_h2);
+  bridge1.virtualWrite(10, sgp_d.raw_e);
+  bridge1.virtualWrite(11, bme_d.temp);
+  bridge1.virtualWrite(12, bme_d.pres);
+  bridge1.virtualWrite(13, bme_d.hum);
+  bridge1.virtualWrite(14, bme_d.gas);
+  bridge1.virtualWrite(15, bme_d.alt);
+    
   Blynk.run();
   delay(1000);
 }
