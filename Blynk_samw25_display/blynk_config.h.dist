@@ -1,8 +1,15 @@
 #ifndef _BLYNK_CONFIG_H_
 #define _BLYNK_CONFIG_H_
+#define LOCAL
 
-char ssid[] = "your_wifi_ssid"
-char pass[] = "your_wifi_password"
-char auth[] = "your_blynk_auth"
+char ssid[] = "your_wifi_ssid";
+char pass[] = "your_wifi_password";
+char auth[] = "your_blynk_auth";
+
+#ifdef LOCAL
+  IPAddress addr = IPAddress(0, 0, 0, 0); // enter your local server's IP
+#else
+  char addr[] = "blynk-cloud.com";
+#endif // LOCAL
 
 #endif

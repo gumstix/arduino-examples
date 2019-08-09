@@ -1,35 +1,11 @@
-/*************************************************************
-  Download latest Blynk library here:
-    https://github.com/blynkkk/blynk-library/releases/latest
+/********************************************************************
+ *                 Gumstix ESP8266 UV Sensor Board                  *
+ *                          Blynk Demo                              *
+ *                    (C) 2019 Gumstix, Inc.                        *
+ ********************************************************************/
+// Rename `blynk_config.h.dist` as `blynk_config.h` and add your WiFi credentials,
+// Blynk auth token, etc.
 
-  Blynk is a platform with iOS and Android apps to control
-  Arduino, Raspberry Pi and the likes over the Internet.
-  You can easily build graphic interfaces for all your
-  projects by simply dragging and dropping widgets.
-
-    Downloads, docs, tutorials: http://www.blynk.cc
-    Sketch generator:           http://examples.blynk.cc
-    Blynk community:            http://community.blynk.cc
-    Follow us:                  http://www.fb.com/blynkapp
-                                http://twitter.com/blynk_app
-
-  Blynk library is licensed under MIT license
-  This example code is in public domain.
-
- *************************************************************
-  This example runs directly on ESP8266 chip.
-
-  Note: This requires ESP8266 support package:
-    https://github.com/esp8266/Arduino
-
-  Please be sure to select the right ESP8266 module
-  in the Tools -> Board menu!
-
-  Change WiFi ssid, pass, and Blynk auth token to run :)
-  Feel free to apply it to any other example. It's simple!
- *************************************************************/
-
-/* Comment this out to disable prints and save space */
 #define BLYNK_PRINT Serial
 
 #include <Wire.h>
@@ -46,48 +22,50 @@
 
 Adafruit_BME280 bme;
 
+// Container for barometer data
 struct bme_data{
-  float temp;
-  float pres;
+  float temp;  // Celsius
+  float pres;  //
   uint32_t hum;
 };
 
 struct bme_data sensor_data;
+
+// UV sensor returns the UV index
 int uvindex;
+
 Adafruit_VEML6070 uv = Adafruit_VEML6070();
-WidgetBridge bridge1(V1);
 
-// You should get Auth Token in the Blynk App.
-// Go to the Project Settings (nut icon).
-
-// Your WiFi credentials.
-// Set password to "" for open networks.
-
-uint32_t getAbsoluteHumidity(float temperature, float humidity) {
-    // approximation formula from Sensirion SGP30 Driver Integration chapter 3.15
-    const float absoluteHumidity = 216.7f * ((humidity / 100.0f) * 6.112f * exp((17.62f * temperature) / (243.12f + temperature)) / (273.15f + temperature)); // [g/m^3]
-    const uint32_t absoluteHumidityScaled = static_cast<uint32_t>(1000.0f * absoluteHumidity); // [mg/m^3]
-    return absoluteHumidityScaled;
-}
 
 void bme_get() {
-  sensor_data.temp = bme.readTemperature();
-  sensor_data.pres = bme.readPressure()/10.0;
+  sensor_data.temp = bme.readTemperature(); 
+  sensor_data.pres = bme.readPressure()/10.0; 
   sensor_data.hum = bme.readHumidity();
-  
-  float hum = getAbsoluteHumidity(sensor_data.temp, hum);
-  Serial.println(hum);
 }
 
+
+/*********Device Bridge**********/
+// For the final demo there is also an RGB Matrix board that
+// displays data from this and the ESP32 Gas Sensor board.
+// This bridge allows the sensor boards to communicate with it
+
+#ifdef BRIDGING
+WidgetBridge bridge1(V1);
+
 BLYNK_CONNECTED() {
-  bridge1.setAuthToken("4FstxCQ0xRtZO8qNAc0glNVniYVspzZY");
+  bridge1.setAuthToken(bridge_auth);
 }
+#endif // BRIDGING
 
 void setup()
 {
   // Debug console
   Serial.begin(9600);
+
+  // Both sensors require I2C
   Wire.begin(SDA_PIN, SCL_PIN);
+
+  // Initializing both sensors
   uv.begin(VEML6070_1_T);
   int status = bme.begin();
   if(!status){
@@ -95,21 +73,34 @@ void setup()
     Serial.println("BME connection failed!");
     while(1);
   }
-  Blynk.begin(auth, ssid, pass, IPAddress(192, 168, 0, 121), 8080);
+
+  // Connect to Blynk server
+  Blynk.begin(auth, ssid, pass, addr, 8080);
 }
 
 void loop()
 {
+// Using a timer to trigger measurements once a second.
   using periodic = esp8266::polledTimeout::periodic;
   static periodic nextPing(1000);
-  if (nextPing)
-  {
+  if (nextPing){
+
+// Collect sensor data and transmit to Blynk server
     uvindex = uv.readUV();
-    bridge1.virtualWrite(V0, uvindex);
     bme_get();
+    
+    Blynk.virtualWrite(V0, uvindex);
+    Blynk.virtualWrite(V1, sensor_data.temp);
+    Blynk.virtualWrite(V2, sensor_data.pres / 100.0F);
+    Blynk.virtualWrite(V3, sensor_data.hum);
+    
+#ifdef BRIDGING
+    bridge1.virtualWrite(V0, uvindex);
     bridge1.virtualWrite(V1, sensor_data.temp);
     bridge1.virtualWrite(V2, sensor_data.pres / 100.0F);
     bridge1.virtualWrite(V3, sensor_data.hum);
+#endif // BRIDGING
+
     Serial.print("UV Value:    "); Serial.println(uvindex);
     Serial.print("Temperature: "); Serial.println(sensor_data.temp);
     Serial.print("Pressure:    "); Serial.println(sensor_data.pres);

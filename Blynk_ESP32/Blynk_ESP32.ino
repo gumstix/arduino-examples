@@ -1,4 +1,11 @@
-
+/********************************************************************
+ *                 Gumstix ESP32 Gas Sensor Board                   *
+ *                          Blynk Demo                              *
+ *                    (C) 2019 Gumstix, Inc.                        *
+ ********************************************************************/
+// Rename blynk_config.h.dist as blynk_config.h and add your WiFi credentials,
+// Blynk auth token, etc.
+ 
 #define BLYNK_PRINT Serial
 #include <BlynkSimpleEsp32.h>
 #include <Wire.h>
@@ -12,11 +19,12 @@
 
 Adafruit_SGP30 sgp;
 
-#define SEALEVELPRESSURE_HPA (1016.0)
+//Pressure at sea level is ~101.3 kPa
+#define SEALEVELPRESSURE_HPA (1013.0)
 
 Adafruit_BME680 bme; // I2C
-WidgetBridge bridge1(V8);
 
+// Container for SGP30 gas sensor data
 struct sgp_data{
   int tvoc;
   int eco2;
@@ -25,6 +33,7 @@ struct sgp_data{
 };
 struct sgp_data sgp_d;
 
+// Container for BME680 barmometer data
 struct bme_data{
   float temp;
   float pres;
@@ -32,7 +41,6 @@ struct bme_data{
   float gas;
   float alt;
 };
-
 struct bme_data bme_d;
 
 /* return absolute humidity [mg/m^3] with approximation formula
@@ -46,17 +54,20 @@ uint32_t getAbsoluteHumidity(float temperature, float humidity) {
     return absoluteHumidityScaled;
 }
 
+
+// Get data from sensors
 void get_sgp_data(){
   if(sgp.IAQmeasure()){
-    sgp_d.tvoc = sgp.TVOC;
-    sgp_d.eco2 = sgp.eCO2;
+    sgp_d.tvoc = sgp.TVOC; // parts per billion
+    sgp_d.eco2 = sgp.eCO2; // parts per millon 
   }
   else{
     sgp_d.tvoc = -1;
     sgp_d.eco2 =-1;
   }
   if(sgp.IAQmeasureRaw()){
-    sgp_d.raw_h2 = sgp.rawH2;
+  // This is raw sensor data.  It has no units.
+    sgp_d.raw_h2 = sgp.rawH2;    
     sgp_d.raw_e = sgp.rawEthanol;
   }
   else{
@@ -67,10 +78,10 @@ void get_sgp_data(){
 
 void get_bme_data(){
   if(bme.performReading()){
-    bme_d.temp = bme.temperature;
-    bme_d.pres = bme.pressure;
-    bme_d.hum = bme.humidity;
-    bme_d.gas = bme.gas_resistance;
+    bme_d.temp = bme.temperature; // Celsius
+    bme_d.pres = bme.pressure; // Pascals
+    bme_d.hum = bme.humidity; // % relative humidity
+    bme_d.gas = bme.gas_resistance; // Ohms
   }
   else{
     bme_d.temp = -1;
@@ -80,16 +91,25 @@ void get_bme_data(){
   }
   bme_d.alt = bme.readAltitude(SEALEVELPRESSURE_HPA);
 }
+
+
+/*********Device Bridge**********/
+// For the final demo there is also an RGB Matrix board that
+// displays data from this and the ESP8266 UV Sensor board
+// This bridge allows the sensor boards to communicate with it
+
+#ifdef BRIDGING
+WidgetBridge bridge1(V8);
 BLYNK_CONNECTED() {
-  bridge1.setAuthToken("4FstxCQ0xRtZO8qNAc0glNVniYVspzZY");
+  bridge1.setAuthToken(bridge_auth);
 }
+#endif // BRIDGING
 
 void setup() {
   Serial.begin(9600);
   Wire.begin(SDA_PIN, SCL_PIN);
-  
-  Serial.println("SGP30 test");
 
+// Verify sensors are working
   if (! sgp.begin()){
     Serial.println("Sensor not found :(");
     while (1);
@@ -111,11 +131,15 @@ void setup() {
 
   sgp.setHumidity(getAbsoluteHumidity(bme_d.temp, bme_d.pres));
 
-  Blynk.begin(auth, ssid, pass, IPAddress(192,168,0,121), 8080);
+// Connect to the Blynk server
+  Blynk.begin(auth, ssid, pass, addr, 8080);
 }
 
 
 void loop() {
+  // The loop simply collects the sensor data and sends it to
+  // the Blynk server for consumption.
+  
   get_sgp_data();
   get_bme_data();
   Serial.print("Altitude: ");Serial.println(bme_d.alt);
@@ -128,7 +152,10 @@ void loop() {
   Blynk.virtualWrite(5, bme_d.pres);
   Blynk.virtualWrite(6, bme_d.hum);
   Blynk.virtualWrite(7, bme_d.gas);
-  
+
+// If you're using a bridge to an RGB matrix board, or some
+// other remote consumer, use the following to transmit.
+#ifdef BRIDGING
   bridge1.virtualWrite(7, sgp_d.tvoc);
   bridge1.virtualWrite(8, sgp_d.eco2);
   bridge1.virtualWrite(9, sgp_d.raw_h2);
@@ -138,7 +165,7 @@ void loop() {
   bridge1.virtualWrite(13, bme_d.hum);
   bridge1.virtualWrite(14, bme_d.gas);
   bridge1.virtualWrite(15, bme_d.alt);
-    
+#endif //BRIDGING
   Blynk.run();
   delay(1000);
 }
