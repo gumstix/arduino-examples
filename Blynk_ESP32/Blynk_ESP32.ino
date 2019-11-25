@@ -20,7 +20,7 @@
 Adafruit_SGP30 sgp;
 
 //Pressure at sea level is ~101.3 kPa
-#define SEALEVELPRESSURE_HPA (1013.0)
+#define SEALEVELPRESSURE_HPA (1018.0)
 
 Adafruit_BME680 bme; // I2C
 

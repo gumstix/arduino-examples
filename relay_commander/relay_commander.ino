@@ -36,6 +36,8 @@ int button_clockwise[] =  {
 
 boolean console_connected;
 
+boolean log_in = false;
+
 FlashStorage(wpa_credentials, wpa_data);
 
 lockout_value lockout;
@@ -119,7 +121,8 @@ void _process_command(char key, char source) {
     case 'c': // Connect to wifi and save credentials if successful
       Serial.print("Attempting to login to WiFi Network: ");
       Serial.println(credentials.ssid);
-      if(attempt_login()) {
+      log_in = attempt_login(); 
+      if(log_in) {
         wpa_credentials.write(credentials);
         Serial.println("Login successful!  New credentials saved!");
         strcpy(response,"okay");
@@ -355,9 +358,9 @@ void console_put_response() {
   {
     Serial.println("CONNECTED");
   }
-  else
+  else {
     Serial.println("DISCONNECTED");
-  
+  }
   Serial.print("\tIP address:     ");
   Serial.println(credentials.ip);
   Serial.print("\tSSID = ");
@@ -395,6 +398,7 @@ bool attempt_login() {
   }
     if(wifi_status == WL_CONNECTED){
      credentials.ip = WiFi.localIP();
+     digitalWrite(WIFI_LED, HIGH);
      server.begin();
     }
    
@@ -520,6 +524,8 @@ void setup() {
     buttons[i].value = buttons[i].button_state;
     buttons[i].last_value = buttons[i].value;
   }
+  pinMode(WIFI_LED, OUTPUT);
+  
   lockout = none;
   seq_index = 0;
   credentials.ip = INADDR_NONE;
@@ -530,7 +536,7 @@ void setup() {
   #else
     credentials.ip = IPAddress(192, 168, 55, 64);
   #endif
-  attempt_login();
+  log_in = attempt_login();
   cli_in[0] = 0;
   cli_in[1] = 0;
   strcpy(cmd, "");
@@ -543,6 +549,12 @@ void setup() {
 }
 
 void loop() {
+  if (WiFi.status() != WL_CONNECTED && digitalRead(WIFI_LED)) {
+	if (log_in)
+      	    if(!attempt_login())    
+		digitalWrite(WIFI_LED, LOW);
+  }
+      
   // put your main code here, to run repeatedly:
   if(!console_connected and Serial) {
     console_connected = true;

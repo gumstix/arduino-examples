@@ -39,7 +39,7 @@
  *     V17 - Brightness
  */
 
-uint8_t brightness = 30;
+uint8_t brightness = 16;
 
 Adafruit_NeoMatrix matrix(  16, 16, // 16x16 Matrix
                             2, 1, // 2 tiles in a row
