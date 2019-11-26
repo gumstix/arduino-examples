@@ -420,13 +420,13 @@ boolean tcp_get_command() {
         Serial.print(c);
         
         if(c[0] == '\n') {
-          client.stop();
           if(line_is_blank == true) {
             for(int i = 0; i < response_len; i++) {
               client.println(response_str[i]);
               
               Serial.println(response_str[i]);
             }
+            client.stop();
             delay(1);
           }
           else if(strstr(this_line, "GET") == this_line) {
