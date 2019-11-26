@@ -37,6 +37,7 @@ int button_clockwise[] =  {
 boolean console_connected;
 
 boolean log_in = false;
+boolean server_started = false;
 
 FlashStorage(wpa_credentials, wpa_data);
 
@@ -388,18 +389,26 @@ void console_put_response() {
 // to WIFI via WPA.
 
 bool attempt_login() {
+  if(strlen(credentials.ssid) == 0 || strlen(credentials.psk) == 0)
+    return false;
   Serial.print(credentials.ip);
+  WiFi.refresh();
   WiFi.config(credentials.ip);
   int attempts = 0;
   while(wifi_status != WL_CONNECTED && attempts < MAX_WIFI_ATTEMPTS) {
     wifi_status = WiFi.begin(credentials.ssid, credentials.psk);
     attempts++;
-    delay(500);
+    if(!wifi_status)
+      delay(2000);
   }
     if(wifi_status == WL_CONNECTED){
      credentials.ip = WiFi.localIP();
      digitalWrite(WIFI_LED, HIGH);
-     server.begin();
+     if(!server_started) {
+      server.begin();
+      server_started = true;
+      Serial.println("WiFi server started");
+     }
     }
    
   return(wifi_status == WL_CONNECTED);
@@ -549,10 +558,15 @@ void setup() {
 }
 
 void loop() {
-  if (WiFi.status() != WL_CONNECTED && digitalRead(WIFI_LED)) {
-	if (log_in)
-      	    if(!attempt_login())    
-		digitalWrite(WIFI_LED, LOW);
+  if (WiFi.status() != WL_CONNECTED && log_in) {
+    Serial.print("WiFi.status() == "); Serial.println(WiFi.status());
+  	if(wifi_status != WL_CONNECTED) {
+    	digitalWrite(WIFI_LED, LOW);
+    	if (attempt_login())    
+          digitalWrite(WIFI_LED, HIGH);
+  	  }
+    else
+      wifi_status = WiFi.status();
   }
       
   // put your main code here, to run repeatedly:
